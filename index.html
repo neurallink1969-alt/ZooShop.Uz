@@ -98,7 +98,15 @@ body{background:var(--bg);color:var(--ink);padding-bottom:86px}
     <div id="cartList"></div>
     <div class="tot"><span>Jami:</span><span id="cTotal">0 so'm</span></div>
     <div class="fld"><label>Telefon raqamingiz *</label><input id="tel" type="tel" placeholder="+998 90 123 45 67"></div>
-    <div class="fld"><label>Izoh (ixtiyoriy)</label><textarea id="izoh" rows="2" placeholder="Manzil, yetkazish vaqti..."></textarea></div>
+    <div class="fld"><label>Manzil / Lokatsiya</label>
+      <div style="display:flex;gap:8px">
+        <input id="loc" placeholder="Manzil yozing yoki belgilang" style="flex:1">
+        <button onclick="detectLoc()" style="padding:0 12px;border:1px solid var(--line);border-radius:10px;background:var(--panel);color:var(--ink);font-size:16px" title="Joylashuvni aniqlash">📍</button>
+        <button onclick="openMap()" style="padding:0 12px;border:1px solid var(--line);border-radius:10px;background:var(--panel);color:var(--ink);font-size:16px" title="Xaritadan tanlash">🗺</button>
+      </div>
+      <div class="hint" style="text-align:left;margin-top:4px" id="locHint">📍 — avtomatik aniqlash, 🗺 — xaritadan belgilash</div>
+    </div>
+    <div class="fld"><label>Izoh (ixtiyoriy)</label><textarea id="izoh" rows="2" placeholder="Yetkazish vaqti, qo'shimcha..."></textarea></div>
     <button class="send" onclick="sendOrder()">Buyurtma berish</button>
     <div class="hint">Buyurtma botga yuboriladi, tez orada bog'lanamiz</div>
   </div>
@@ -123,6 +131,15 @@ body{background:var(--bg);color:var(--ink);padding-bottom:86px}
     </div>
     <button class="send" onclick="confirmKg()">Savatga qo'shish</button>
     <div class="hint">Kg yoki summani kiriting — ikkinchisi o'zi hisoblanadi. Masalan: 20 000 so'mlik</div>
+  </div>
+</div>
+
+<div class="sheet" id="mapSheet" onclick="if(event.target===this)closeMap()">
+  <div class="inner" style="max-height:92vh">
+    <h2>🗺 Lokatsiyani belgilang</h2>
+    <div class="hint" style="text-align:left;margin-bottom:8px">Xaritada kerakli joyga bosing yoki belgini suring</div>
+    <div id="map" style="height:52vh;border-radius:12px;background:#e8ece9"></div>
+    <button class="send" onclick="confirmMap()">✅ Shu joyni tanlash</button>
   </div>
 </div>
 
@@ -290,13 +307,74 @@ function sendOrder(){
   if(!tel){ alert("Telefon raqamingizni kiriting"); return; }
   const t = Object.entries(cart).map(([plu,qty])=>[plu, qty]);
   if(!t.length){ alert("Savatcha bo'sh"); return; }
-  const payload = JSON.stringify({ t, tel, izoh: document.getElementById('izoh').value.trim().slice(0,200) });
+  const locV = document.getElementById('loc').value.trim();
+  const inTg = !!(tg?.sendData && tg.initData);
+  if(!locV && !inTg){ alert("Manzil kiriting yoki xaritadan belgilang"); return; }
+  const payload = JSON.stringify({ t, tel, loc: locV.slice(0,150), izoh: document.getElementById('izoh').value.trim().slice(0,200) });
   if(payload.length > 3800){
     alert("Savatcha juda katta — bir buyurtmada kamroq turdagi mahsulot tanlang.");
     return;
   }
-  if(tg?.sendData){ tg.sendData(payload); }
-  else alert("Bu sahifa Telegram ichida, bot tugmasi orqali ochilishi kerak.");
+  if(tg?.sendData && tg.initData){ tg.sendData(payload); return; }
+  // ===== Brauzer rejimi: buyurtma matnini tayyorlab botga yo'naltirish =====
+  const lines = ['BUYURTMA', 'tel: '+tel];
+  const loc = document.getElementById('loc').value.trim();
+  if(loc) lines.push('lokatsiya: '+loc);
+  for(const [plu,qty] of t) lines.push(plu+' x '+qty);
+  const izoh = document.getElementById('izoh').value.trim();
+  if(izoh) lines.push('izoh: '+izoh.slice(0,200));
+  const text = lines.join('\n');
+  navigator.clipboard?.writeText(text).catch(()=>{});
+  alert("Buyurtma matni NUSXALANDI.\n\nHozir Telegram ochiladi — botga yozish oynasida matnni QO'YIB (paste) yuboring, buyurtmangiz qabul qilinadi.");
+  window.open('https://t.me/zooshop_products_bot', '_blank');
+}
+let map=null, marker=null;
+function loadLeaflet(cb){
+  if(window.L){ cb(); return; }
+  const css = document.createElement('link');
+  css.rel='stylesheet';
+  css.href='https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css';
+  document.head.appendChild(css);
+  const s = document.createElement('script');
+  s.src='https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js';
+  s.onload=cb;
+  s.onerror=()=>alert("Xarita yuklanmadi — internetni tekshiring");
+  document.head.appendChild(s);
+}
+function openMap(){
+  document.getElementById('mapSheet').style.display='block';
+  loadLeaflet(()=>{
+    const start=[41.3111,69.2406]; // Toshkent
+    if(!map){
+      map = L.map('map').setView(start, 12);
+      L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'© OpenStreetMap'}).addTo(map);
+      marker = L.marker(start,{draggable:true}).addTo(map);
+      map.on('click',e=>marker.setLatLng(e.latlng));
+    }
+    setTimeout(()=>map.invalidateSize(),150);
+    if(navigator.geolocation) navigator.geolocation.getCurrentPosition(p=>{
+      const ll=[p.coords.latitude,p.coords.longitude];
+      map.setView(ll,16); marker.setLatLng(ll);
+    },()=>{},{timeout:5000});
+  });
+}
+function closeMap(){ document.getElementById('mapSheet').style.display='none'; }
+function confirmMap(){
+  if(!marker){ closeMap(); return; }
+  const p = marker.getLatLng();
+  document.getElementById('loc').value = 'https://maps.google.com/?q='+p.lat.toFixed(6)+','+p.lng.toFixed(6);
+  document.getElementById('locHint').textContent = '✅ Lokatsiya xaritadan belgilandi';
+  closeMap();
+}
+function detectLoc(){
+  const hint = document.getElementById('locHint');
+  if(!navigator.geolocation){ hint.textContent = "Brauzeringiz joylashuvni qo'llamaydi — manzilni yozing"; return; }
+  hint.textContent = 'Aniqlanmoqda...';
+  navigator.geolocation.getCurrentPosition(p=>{
+    const link = 'https://maps.google.com/?q='+p.coords.latitude.toFixed(6)+','+p.coords.longitude.toFixed(6);
+    document.getElementById('loc').value = link;
+    hint.textContent = '✅ Lokatsiya aniqlandi (xarita havolasi qo\'yildi)';
+  }, ()=>{ hint.textContent = "Ruxsat berilmadi — manzilni qo'lda yozing"; }, {enableHighAccuracy:true, timeout:10000});
 }
 </script>
 </body>
