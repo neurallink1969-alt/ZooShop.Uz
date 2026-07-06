@@ -153,6 +153,9 @@ const tg = window.Telegram?.WebApp;
 tg?.ready(); tg?.expand();
 
 let items = [], cart = {}, activeTuri = '';
+function isTelegram(){
+  return !!(tg && tg.sendData && tg.platform && tg.platform !== 'unknown');
+}
 
 fetch('products.json?v=' + Date.now())
   .then(r => r.json())
@@ -308,14 +311,14 @@ function sendOrder(){
   const t = Object.entries(cart).map(([plu,qty])=>[plu, qty]);
   if(!t.length){ alert("Savatcha bo'sh"); return; }
   const locV = document.getElementById('loc').value.trim();
-  const inTg = !!(tg?.sendData && tg.initData);
+  const inTg = isTelegram();
   if(!locV && !inTg){ alert("Manzil kiriting yoki xaritadan belgilang"); return; }
   const payload = JSON.stringify({ t, tel, loc: locV.slice(0,150), izoh: document.getElementById('izoh').value.trim().slice(0,200) });
   if(payload.length > 3800){
     alert("Savatcha juda katta — bir buyurtmada kamroq turdagi mahsulot tanlang.");
     return;
   }
-  if(tg?.sendData && tg.initData){ tg.sendData(payload); return; }
+  if(isTelegram()){ tg.sendData(payload); return; }
   // ===== Brauzer rejimi: buyurtma matnini tayyorlab botga yo'naltirish =====
   const lines = ['BUYURTMA', 'tel: '+tel];
   const loc = document.getElementById('loc').value.trim();
