@@ -143,6 +143,20 @@ body{background:var(--bg);color:var(--ink);padding-bottom:86px}
   </div>
 </div>
 
+<div class="sheet" id="ordSheet" onclick="if(event.target===this)this.style.display='none'">
+  <div class="inner">
+    <h2>✈️ Buyurtmani botga yuborish</h2>
+    <div class="hint" style="text-align:left;margin-bottom:10px">
+      Brauzerdan buyurtma 2 bosqichda yuboriladi:<br>
+      <b>1)</b> Matnni nusxalang &nbsp; <b>2)</b> Botni ochib, xabar maydoniga qo'yib (paste) yuboring
+    </div>
+    <textarea id="ordText" readonly rows="8" style="width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:10px;font-size:12.5px;background:var(--panel);color:var(--ink);margin-bottom:10px"></textarea>
+    <button class="send" style="margin-bottom:8px;background:#3a6ea5" onclick="copyOrder(this)">1️⃣ Matnni nusxalash</button>
+    <button class="send" onclick="window.open('https://t.me/zooshop_products_bot','_blank')">2️⃣ Botni ochish → qo'yib yuborish</button>
+    <div class="hint">Matn yuborilgach, bot buyurtmani avtomatik qabul qiladi</div>
+  </div>
+</div>
+
 <div id="lb" onclick="this.style.display='none'">
   <img id="lbImg" src="" alt="">
   <div class="cap" id="lbCap"></div>
@@ -327,9 +341,18 @@ function sendOrder(){
   const izoh = document.getElementById('izoh').value.trim();
   if(izoh) lines.push('izoh: '+izoh.slice(0,200));
   const text = lines.join('\n');
+  closeCart();
+  document.getElementById('ordText').value = text;
+  document.getElementById('ordSheet').style.display = 'block';
   navigator.clipboard?.writeText(text).catch(()=>{});
-  alert("Buyurtma matni NUSXALANDI.\n\nHozir Telegram ochiladi — botga yozish oynasida matnni QO'YIB (paste) yuboring, buyurtmangiz qabul qilinadi.");
-  window.open('https://t.me/zooshop_products_bot', '_blank');
+}
+function copyOrder(btn){
+  const ta = document.getElementById('ordText');
+  ta.select(); ta.setSelectionRange(0, 99999);
+  const done = ()=>{ btn.textContent = '✅ Nusxalandi!'; setTimeout(()=>btn.textContent='1️⃣ Matnni nusxalash', 2000); };
+  if(navigator.clipboard?.writeText){
+    navigator.clipboard.writeText(ta.value).then(done).catch(()=>{ document.execCommand('copy'); done(); });
+  } else { document.execCommand('copy'); done(); }
 }
 let map=null, marker=null;
 function loadLeaflet(cb){
