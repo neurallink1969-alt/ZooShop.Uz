@@ -61,6 +61,12 @@ body{background:var(--bg);color:var(--ink);padding-bottom:86px}
 .send{width:100%;padding:14px;border:none;border-radius:12px;background:var(--green);color:#fff;font-size:15px;font-weight:800;margin-top:6px}
 .hint{font-size:11.5px;color:var(--muted);text-align:center;margin-top:8px}
 
+/* to'lov tugmalari */
+.payrow{display:flex;gap:8px}
+.paybtn{flex:1;padding:10px 4px;border:1px solid var(--line);border-radius:10px;background:var(--panel);color:var(--ink);font-size:12.5px;font-weight:700}
+.paybtn.on{background:var(--green);color:#fff;border-color:var(--green)}
+.tellink{display:none;margin-top:5px;background:none;border:none;color:var(--green);font-size:12.5px;font-weight:700;text-decoration:underline;padding:0}
+
 /* kg miqdor oynasi */
 #kgm{display:none;position:fixed;inset:0;z-index:65;background:rgba(10,16,12,.5)}
 #kgm .inner{position:absolute;left:0;right:0;bottom:0;background:var(--bg);border-radius:18px 18px 0 0;padding:16px 14px 22px}
@@ -97,7 +103,16 @@ body{background:var(--bg);color:var(--ink);padding-bottom:86px}
     <h2>🛒 Savatcha</h2>
     <div id="cartList"></div>
     <div class="tot"><span>Jami:</span><span id="cTotal">0 so'm</span></div>
-    <div class="fld"><label>Telefon raqamingiz *</label><input id="tel" type="tel" placeholder="+998 90 123 45 67"></div>
+    <div class="fld"><label>To'lov turi</label>
+      <div class="payrow">
+        <button class="paybtn on" data-p="naqd" onclick="setPay(this)">💵 Naqd</button>
+        <button class="paybtn" data-p="click" onclick="setPay(this)">💳 Click</button>
+        <button class="paybtn" data-p="karta" onclick="setPay(this)">🏦 O'tkazma</button>
+      </div>
+    </div>
+    <div class="fld"><label>Telefon raqamingiz *</label><input id="tel" type="tel" placeholder="+998 90 123 45 67">
+      <button class="tellink" id="telSuggest" onclick="askTgPhone()">📱 Telegramdagi raqamimni qo'yish</button>
+    </div>
     <div class="fld"><label>Manzil / Lokatsiya</label>
       <div style="display:flex;gap:8px">
         <input id="loc" placeholder="Manzil yozing yoki belgilang" style="flex:1">
@@ -259,7 +274,12 @@ function updateBar(){
   document.getElementById('cCnt').textContent = n;
   document.getElementById('cSum').textContent = fmt(s);
 }
-function openCart(){ drawCart(); document.getElementById('sheet').style.display='block'; }
+function openCart(){
+  drawCart();
+  document.getElementById('telSuggest').style.display =
+    (isTelegram() && tg.requestContact && !document.getElementById('tel').value.trim()) ? 'inline' : 'none';
+  document.getElementById('sheet').style.display='block';
+}
 function closeCart(){ document.getElementById('sheet').style.display='none'; }
 function drawCart(){
   const box = document.getElementById('cartList');
@@ -286,6 +306,22 @@ function showImg(plu){
   im.src = imgSrc(i);
   document.getElementById('lbCap').textContent = i.nomi;
   document.getElementById('lb').style.display = 'flex';
+}
+let payMethod = 'naqd';
+function setPay(btn){
+  payMethod = btn.dataset.p;
+  document.querySelectorAll('.paybtn').forEach(b=>b.classList.toggle('on', b===btn));
+}
+function askTgPhone(){
+  if(!(isTelegram() && tg.requestContact)) return;
+  tg.requestContact((ok, resp)=>{
+    if(!ok) return;
+    let ph = resp?.responseUnsafe?.contact?.phone_number || '';
+    if(ph){
+      if(!ph.startsWith('+')) ph = '+'+ph;
+      document.getElementById('tel').value = ph;
+    }
+  });
 }
 let kgPlu = null;
 function openKg(plu){
@@ -330,14 +366,14 @@ function sendOrder(){
   const locV = document.getElementById('loc').value.trim();
   const inTg = isTelegram();
   if(!locV && !inTg){ alert("Manzil kiriting yoki xaritadan belgilang"); return; }
-  const payload = JSON.stringify({ t, tel, loc: locV.slice(0,150), izoh: document.getElementById('izoh').value.trim().slice(0,200) });
+  const payload = JSON.stringify({ t, tel, pay: payMethod, loc: locV.slice(0,150), izoh: document.getElementById('izoh').value.trim().slice(0,200) });
   if(payload.length > 3800){
     alert("Savatcha juda katta — bir buyurtmada kamroq turdagi mahsulot tanlang.");
     return;
   }
   if(isTelegram()){ tg.sendData(payload); return; }
   // ===== Brauzer rejimi: buyurtma matnini tayyorlab botga yo'naltirish =====
-  const lines = ['BUYURTMA', 'tel: '+tel];
+  const lines = ['BUYURTMA', 'tel: '+tel, 'tolov: '+payMethod];
   const loc = document.getElementById('loc').value.trim();
   if(loc) lines.push('lokatsiya: '+loc);
   for(const [plu,qty] of t) lines.push(plu+' x '+qty);
