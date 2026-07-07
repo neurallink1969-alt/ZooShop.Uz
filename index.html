@@ -63,8 +63,8 @@ body{background:var(--bg);color:var(--ink);padding-bottom:86px}
 
 /* to'lov tugmalari */
 .payrow{display:flex;gap:8px}
-.paybtn{flex:1;padding:10px 4px;border:1px solid var(--line);border-radius:10px;background:var(--panel);color:var(--ink);font-size:12.5px;font-weight:700}
-.paybtn.on{background:var(--green);color:#fff;border-color:var(--green)}
+.paybtn,.filbtn{flex:1;padding:10px 4px;border:1px solid var(--line);border-radius:10px;background:var(--panel);color:var(--ink);font-size:12.5px;font-weight:700}
+.paybtn.on,.filbtn.on{background:var(--green);color:#fff;border-color:var(--green)}
 .tellink{display:none;margin-top:5px;background:none;border:none;color:var(--green);font-size:12.5px;font-weight:700;text-decoration:underline;padding:0}
 
 /* kg miqdor oynasi */
@@ -103,6 +103,14 @@ body{background:var(--bg);color:var(--ink);padding-bottom:86px}
     <h2>🛒 Savatcha</h2>
     <div id="cartList"></div>
     <div class="tot"><span>Jami:</span><span id="cTotal">0 so'm</span></div>
+    <div class="fld"><label>Filial</label>
+      <div class="payrow">
+        <button class="filbtn" data-f="Arxiv (ZooShop1)" onclick="setFil(this)">Arxiv</button>
+        <button class="filbtn" data-f="Luchovoy (ZooShop2)" onclick="setFil(this)">Luchovoy</button>
+        <button class="filbtn" data-f="ShumBola (ZooShop3)" onclick="setFil(this)">ShumBola</button>
+      </div>
+      <div class="hint" style="text-align:left;margin-top:4px">Sizga yaqin manzildan buyurtma berishingiz mumkin</div>
+    </div>
     <div class="fld"><label>To'lov turi</label>
       <div class="payrow">
         <button class="paybtn on" data-p="naqd" onclick="setPay(this)">💵 Naqd (taksi orqali)</button>
@@ -307,6 +315,11 @@ function showImg(plu){
   document.getElementById('lb').style.display = 'flex';
 }
 let payMethod = 'naqd';
+let filial = '';
+function setFil(btn){
+  filial = btn.dataset.f;
+  document.querySelectorAll('.filbtn').forEach(b=>b.classList.toggle('on', b===btn));
+}
 function setPay(btn){
   payMethod = btn.dataset.p;
   document.querySelectorAll('.paybtn').forEach(b=>b.classList.toggle('on', b===btn));
@@ -360,19 +373,20 @@ function confirmKg(){
 function sendOrder(){
   const tel = document.getElementById('tel').value.trim();
   if(!tel){ alert("Telefon raqamingizni kiriting"); return; }
+  if(!filial){ alert("Filialni tanlang — sizga yaqin manzildan buyurtma berishingiz mumkin"); return; }
   const t = Object.entries(cart).map(([plu,qty])=>[plu, qty]);
   if(!t.length){ alert("Savatcha bo'sh"); return; }
   const locV = document.getElementById('loc').value.trim();
   const inTg = isTelegram();
   if(!locV && !inTg){ alert("Manzil kiriting yoki xaritadan belgilang"); return; }
-  const payload = JSON.stringify({ t, tel, pay: payMethod, loc: locV.slice(0,150), izoh: document.getElementById('izoh').value.trim().slice(0,200) });
+  const payload = JSON.stringify({ t, tel, fil: filial, pay: payMethod, loc: locV.slice(0,150), izoh: document.getElementById('izoh').value.trim().slice(0,200) });
   if(payload.length > 3800){
     alert("Savatcha juda katta — bir buyurtmada kamroq turdagi mahsulot tanlang.");
     return;
   }
   if(isTelegram()){ tg.sendData(payload); return; }
   // ===== Brauzer rejimi: buyurtma matnini tayyorlab botga yo'naltirish =====
-  const lines = ['BUYURTMA', 'tel: '+tel, 'tolov: '+payMethod];
+  const lines = ['BUYURTMA', 'tel: '+tel, 'filial: '+filial, 'tolov: '+payMethod];
   const loc = document.getElementById('loc').value.trim();
   if(loc) lines.push('lokatsiya: '+loc);
   for(const [plu,qty] of t) lines.push(plu+' x '+qty);
