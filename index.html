@@ -113,14 +113,14 @@ body{background:var(--bg);color:var(--ink);padding-bottom:86px}
     </div>
     <div class="fld"><label>To'lov turi</label>
       <div class="payrow">
-        <button class="paybtn on" data-p="naqd" onclick="setPay(this)">💵 Naqd (taksi orqali)</button>
+        <button class="paybtn" data-p="naqd" onclick="setPay(this)">💵 Naqd (taksi orqali)</button>
         <button class="paybtn" data-p="click" onclick="setPay(this)">💳 Click</button>
       </div>
     </div>
     <div class="fld"><label>Telefon raqamingiz *</label><input id="tel" type="tel" placeholder="+998 90 123 45 67">
       <button class="tellink" id="telSuggest" onclick="askTgPhone()">📱 Telegramdagi raqamimni qo'yish</button>
     </div>
-    <div class="fld"><label>Manzil / Lokatsiya</label>
+    <div class="fld"><label>Manzil / Lokatsiya *</label>
       <div style="display:flex;gap:8px">
         <input id="loc" placeholder="Manzil yozing yoki belgilang" style="flex:1">
         <button onclick="detectLoc()" style="padding:0 12px;border:1px solid var(--line);border-radius:10px;background:var(--panel);color:var(--ink);font-size:16px" title="Joylashuvni aniqlash">📍</button>
@@ -314,7 +314,7 @@ function showImg(plu){
   document.getElementById('lbCap').textContent = i.nomi;
   document.getElementById('lb').style.display = 'flex';
 }
-let payMethod = 'naqd';
+let payMethod = '';
 let filial = '';
 function setFil(btn){
   filial = btn.dataset.f;
@@ -374,11 +374,11 @@ function sendOrder(){
   const tel = document.getElementById('tel').value.trim();
   if(!tel){ alert("Telefon raqamingizni kiriting"); return; }
   if(!filial){ alert("Filialni tanlang — sizga yaqin manzildan buyurtma berishingiz mumkin"); return; }
+  if(!payMethod){ alert("To'lov turini tanlang: Naqd yoki Click"); return; }
   const t = Object.entries(cart).map(([plu,qty])=>[plu, qty]);
   if(!t.length){ alert("Savatcha bo'sh"); return; }
   const locV = document.getElementById('loc').value.trim();
-  const inTg = isTelegram();
-  if(!locV && !inTg){ alert("Manzil kiriting yoki xaritadan belgilang"); return; }
+  if(!locV){ alert("Manzil kiriting: 📍 aniqlash, 🗺 xaritadan belgilash yoki qo'lda yozing"); return; }
   const payload = JSON.stringify({ t, tel, fil: filial, pay: payMethod, loc: locV.slice(0,150), izoh: document.getElementById('izoh').value.trim().slice(0,200) });
   if(payload.length > 3800){
     alert("Savatcha juda katta — bir buyurtmada kamroq turdagi mahsulot tanlang.");
