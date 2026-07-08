@@ -113,7 +113,7 @@ body{background:var(--bg);color:var(--ink);padding-bottom:86px}
     </div>
     <div class="fld"><label>To'lov turi</label>
       <div class="payrow">
-        <button class="paybtn" data-p="naqd" onclick="setPay(this)">💵 Naqd (taksi orqali)</button>
+        <button class="paybtn" data-p="naqd" onclick="setPay(this)">💵 Naqd (1066 taksi)</button>
         <button class="paybtn" data-p="click" onclick="setPay(this)">💳 Click</button>
       </div>
     </div>
@@ -371,14 +371,14 @@ function confirmKg(){
   if(document.getElementById('sheet').style.display==='block') drawCart();
 }
 function sendOrder(){
+  if(!filial){ alert("1) Filialni tanlang — sizga yaqin manzildan buyurtma berishingiz mumkin"); return; }
+  if(!payMethod){ alert("2) To'lov turini tanlang: Naqd yoki Click"); return; }
   const tel = document.getElementById('tel').value.trim();
-  if(!tel){ alert("Telefon raqamingizni kiriting"); return; }
-  if(!filial){ alert("Filialni tanlang — sizga yaqin manzildan buyurtma berishingiz mumkin"); return; }
-  if(!payMethod){ alert("To'lov turini tanlang: Naqd yoki Click"); return; }
+  if(!tel){ alert("3) Telefon raqamingizni kiriting"); return; }
   const t = Object.entries(cart).map(([plu,qty])=>[plu, qty]);
   if(!t.length){ alert("Savatcha bo'sh"); return; }
   const locV = document.getElementById('loc').value.trim();
-  if(!locV){ alert("Manzil kiriting: 📍 aniqlash, 🗺 xaritadan belgilash yoki qo'lda yozing"); return; }
+  if(!locV){ alert("4) Manzil kiriting: 📍 aniqlash, 🗺 xaritadan belgilash yoki qo'lda yozing"); return; }
   const payload = JSON.stringify({ t, tel, fil: filial, pay: payMethod, loc: locV.slice(0,150), izoh: document.getElementById('izoh').value.trim().slice(0,200) });
   if(payload.length > 3800){
     alert("Savatcha juda katta — bir buyurtmada kamroq turdagi mahsulot tanlang.");
